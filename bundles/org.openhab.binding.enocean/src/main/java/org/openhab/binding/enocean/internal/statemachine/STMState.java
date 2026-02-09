@@ -15,13 +15,18 @@ package org.openhab.binding.enocean.internal.statemachine;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * States for the state machine.
- * <p>
- * Device-specific states should be added when implementing specific device handlers.
+ * States for the blind/rollershutter state machine.
  *
  * @author Sven Schad - Initial contribution
  */
 @NonNullByDefault
 public enum STMState {
-    // Placeholder states - device-specific states will be added in device implementations
+    IDLE,
+    MOVEMENT_POSITION_UP,
+    MOVEMENT_POSITION_DOWN,
+    MOVEMENT_SLATS,
+    POSITION_REACHED,
+    MOVEMENT_CALIBRATION_UP,
+    MOVEMENT_CALIBRATION_DOWN,
+    INVALID
 }

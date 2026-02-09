@@ -15,13 +15,19 @@ package org.openhab.binding.enocean.internal.statemachine;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * Actions that trigger state transitions in the state machine.
- * <p>
- * Device-specific actions should be added when implementing specific device handlers.
+ * Actions that trigger state transitions in the blind/rollershutter state machine.
  *
  * @author Sven Schad - Initial contribution
  */
 @NonNullByDefault
 public enum STMAction {
-    // Placeholder - device-specific actions will be added in device implementations
+    POSITION_REQUEST_UP,
+    POSITION_REQUEST_DOWN,
+    SLATS_POS_REQUEST,
+    POSITION_DONE,
+    SLATS_POS_DONE,
+    CALIBRATION_REQUEST_UP,
+    CALIBRATION_REQUEST_DOWN,
+    CALIBRATION_DONE,
+    INVALID_REQUEST
 }

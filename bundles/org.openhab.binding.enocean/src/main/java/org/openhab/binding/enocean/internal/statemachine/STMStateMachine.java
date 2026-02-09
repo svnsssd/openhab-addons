@@ -21,6 +21,7 @@ import java.util.function.Consumer;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.core.types.Command;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +44,8 @@ public class STMStateMachine {
 
     private STMState state;
     private STMState prevState;
+    private @Nullable String storedChannel;
+    private @Nullable Command storedCommand;
 
     protected @Nullable ScheduledFuture<?> responseFuture = null;
 
@@ -167,5 +170,46 @@ public class STMStateMachine {
         if (responseFuture == null || responseFuture.isDone()) {
             this.responseFuture = scheduler.schedule(runnable, delayMs, TimeUnit.MILLISECONDS);
         }
+    }
+
+    /**
+     * Stores a command for later processing.
+     * <p>
+     * This is used when a command cannot be executed immediately (e.g., during calibration)
+     * and needs to be processed after a state transition completes.
+     *
+     * @param channel the channel ID for the command
+     * @param command the command to store
+     */
+    public synchronized void storeCommand(String channel, Command command) {
+        this.storedChannel = channel;
+        this.storedCommand = command;
+        logger.debug("STM: Stored command {} for channel {}", command, channel);
+    }
+
+    /**
+     * Gets the stored channel ID.
+     *
+     * @return the stored channel ID, or null if none stored
+     */
+    public synchronized @Nullable String getStoredChannel() {
+        return storedChannel;
+    }
+
+    /**
+     * Gets the stored command.
+     *
+     * @return the stored command, or null if none stored
+     */
+    public synchronized @Nullable Command getStoredCommand() {
+        return storedCommand;
+    }
+
+    /**
+     * Clears the stored command.
+     */
+    public synchronized void clearStoredCommand() {
+        this.storedChannel = null;
+        this.storedCommand = null;
     }
 }
