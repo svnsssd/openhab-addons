@@ -25,13 +25,11 @@ import java.util.stream.Stream;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.enocean.internal.config.EnOceanActuatorConfig;
-import org.openhab.binding.enocean.internal.config.EnOceanChannelRollershutterConfig;
-import org.openhab.binding.enocean.internal.config.EnOceanChannelRollershutterConfig.ConfigMode;
 import org.openhab.binding.enocean.internal.eep.EEP;
 import org.openhab.binding.enocean.internal.eep.EEPFactory;
 import org.openhab.binding.enocean.internal.eep.EEPType;
+import org.openhab.binding.enocean.internal.eep.STMCapable;
 import org.openhab.binding.enocean.internal.messages.BasePacket;
-import org.openhab.binding.enocean.internal.statemachine.STMAction;
 import org.openhab.binding.enocean.internal.statemachine.STMState;
 import org.openhab.binding.enocean.internal.statemachine.STMStateMachine;
 import org.openhab.binding.enocean.internal.statemachine.STMTransitionConfiguration;
@@ -43,7 +41,6 @@ import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingTypeUID;
-import org.openhab.core.thing.binding.builder.ThingBuilder;
 import org.openhab.core.thing.link.ItemChannelLinkRegistry;
 import org.openhab.core.thing.type.ChannelTypeUID;
 import org.openhab.core.types.Command;
@@ -162,63 +159,22 @@ public class EnOceanBaseActuatorHandler extends EnOceanBaseSensorHandler {
                 configurationErrorDescription = "Configuration is not valid";
                 return false;
             }
-            if (localEEPType.getUsesSTM()) {
-                // this could be extended to an EEP specific initialization of the StateMachine
-                //
-                // following section is used for initialization of A5_3F_7F_EltakoFSB devices
-                Thing thing = getThing();
-                Channel channel = thing.getChannel(CHANNEL_ROLLERSHUTTER);
-                if (channel != null) {
-                    Configuration channelConfig = channel.getConfiguration();
-                    ConfigMode channelcfg;
-                    try {
-                        channelcfg = channelConfig.as(EnOceanChannelRollershutterConfig.class).getConfigMode();
-                    } catch (IllegalArgumentException e) {
-                        configurationErrorDescription = "Invalid rollershutter configuration: " + e.getMessage();
-                        return false;
-                    }
-                    ThingBuilder thingBuilder = editThing();
-                    Channel channel1, channel2;
-                    switch (channelcfg) {
-                        case LEGACY:
-                            logger.debug("Eltako FSB14 will operate in legacy mode");
 
-                            channel1 = thing.getChannel(CHANNEL_DIMMER);
-                            channel2 = thing.getChannel(CHANNEL_STATEMACHINESTATE);
-                            if (channel1 != null && channel2 != null) {
-                                thingBuilder.withoutChannel(channel1.getUID());
-                                thingBuilder.withoutChannel(channel2.getUID());
-                            }
-                            updateThing(thingBuilder.build());
-                            stm = null;
-                            break; // stm will not be used
-                        case ROLLERSHUTTER:
-                            stm = STMStateMachine.build(STMTransitionConfiguration.ROLLERSHUTTER, STMState.INVALID,
-                                    scheduler, this::onStateChanged);
-                            if (stm != null) {
-                                stm.register(STMAction.CALIBRATION_DONE, this::processStoredCommand);
-                                restoreStateMachineState();
-                            }
-                            channel1 = thing.getChannel(CHANNEL_DIMMER);
-                            if (channel1 != null) {
-                                thingBuilder.withoutChannel(channel1.getUID());
-                            }
-                            updateThing(thingBuilder.build());
-                            logger.debug("Eltako FSB14 will operate in rollershutter mode");
-                            break;
-                        case BLINDS:
-                            stm = STMStateMachine.build(STMTransitionConfiguration.BLINDS, STMState.INVALID, scheduler,
-                                    this::onStateChanged);
-                            if (stm != null) {
-                                stm.register(STMAction.CALIBRATION_DONE, this::processStoredCommand);
-                                stm.register(STMAction.POSITION_DONE, this::processStoredCommand);
-                                restoreStateMachineState();
-                            }
-                            logger.debug("Eltako FSB14 will operate in blinds mode");
-                            break;
+            // Check if EEP implements STMCapable interface for state machine support
+            EEP eep = EEPFactory.createEEP(localEEPType);
+            if (eep instanceof STMCapable stmEEP) {
+                Thing thing = getThing();
+                STMTransitionConfiguration stmConfig = stmEEP.getTransitionConfiguration(thing);
+                if (stmConfig != null) {
+                    stm = STMStateMachine.build(stmConfig, stmEEP.getInitialState(), scheduler, this::onStateChanged);
+                    if (stm != null) {
+                        stmEEP.getRequiredCallbackActions(thing)
+                                .forEach(a -> stm.register(a, this::processStoredCommand));
+                        restoreStateMachineState();
                     }
-                    logger.debug("stm initialized");
                 }
+                stmEEP.initializeChannels(thing, editThing(), this::updateThing);
+                logger.debug("STM initialized via STMCapable interface");
             }
 
             if (validateSenderIdOffset(getConfiguration().senderIdOffset)) {

@@ -723,6 +723,11 @@ public enum EEPType {
         return requestsResponse;
     }
 
+    /**
+     * @deprecated Use {@code instanceof STMCapable} check on EEP instance instead.
+     *             This flag will be removed in a future version.
+     */
+    @Deprecated
     public boolean getUsesSTM() {
         return usesSTM;
     }

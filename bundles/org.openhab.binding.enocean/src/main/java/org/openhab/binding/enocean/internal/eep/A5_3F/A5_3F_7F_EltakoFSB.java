@@ -14,17 +14,22 @@ package org.openhab.binding.enocean.internal.eep.A5_3F;
 
 import static org.openhab.binding.enocean.internal.EnOceanBindingConstants.*;
 
+import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.enocean.internal.config.EnOceanChannelRollershutterConfig;
+import org.openhab.binding.enocean.internal.config.EnOceanChannelRollershutterConfig.ConfigMode;
 import org.openhab.binding.enocean.internal.eep.Base._4BSMessage;
+import org.openhab.binding.enocean.internal.eep.STMCapable;
 import org.openhab.binding.enocean.internal.handler.EnOceanBaseActuatorHandler;
 import org.openhab.binding.enocean.internal.messages.ERP1Message;
 import org.openhab.binding.enocean.internal.statemachine.STMAction;
 import org.openhab.binding.enocean.internal.statemachine.STMState;
 import org.openhab.binding.enocean.internal.statemachine.STMStateMachine;
+import org.openhab.binding.enocean.internal.statemachine.STMTransitionConfiguration;
 import org.openhab.core.config.core.Configuration;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.PercentType;
@@ -33,6 +38,7 @@ import org.openhab.core.library.types.UpDownType;
 import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
+import org.openhab.core.thing.binding.builder.ThingBuilder;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.UnDefType;
@@ -45,7 +51,7 @@ import org.openhab.core.types.UnDefType;
  */
 
 @NonNullByDefault
-public class A5_3F_7F_EltakoFSB extends _4BSMessage {
+public class A5_3F_7F_EltakoFSB extends _4BSMessage implements STMCapable {
 
     static final byte STOP = 0x00;
     static final byte MOVE_UP = 0x01;
@@ -379,5 +385,81 @@ public class A5_3F_7F_EltakoFSB extends _4BSMessage {
             return UnDefType.UNDEF;
         }
         return UnDefType.UNDEF;
+    }
+
+    // STMCapable interface implementation
+
+    private @Nullable ConfigMode getConfigMode(Thing thing) {
+        Channel channel = thing.getChannel(CHANNEL_ROLLERSHUTTER);
+        if (channel != null) {
+            try {
+                return channel.getConfiguration().as(EnOceanChannelRollershutterConfig.class).getConfigMode();
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public @Nullable STMTransitionConfiguration getTransitionConfiguration(Thing thing) {
+        ConfigMode mode = getConfigMode(thing);
+        if (mode == null) {
+            return null;
+        }
+        return switch (mode) {
+            case LEGACY -> null;
+            case ROLLERSHUTTER -> STMTransitionConfiguration.ROLLERSHUTTER;
+            case BLINDS -> STMTransitionConfiguration.BLINDS;
+        };
+    }
+
+    @Override
+    public STMState getInitialState() {
+        return STMState.INVALID;
+    }
+
+    @Override
+    public Set<STMAction> getRequiredCallbackActions(Thing thing) {
+        ConfigMode mode = getConfigMode(thing);
+        if (mode == null || mode == ConfigMode.LEGACY) {
+            return Set.of();
+        }
+        return switch (mode) {
+            case LEGACY -> Set.of();
+            case ROLLERSHUTTER -> Set.of(STMAction.CALIBRATION_DONE);
+            case BLINDS -> Set.of(STMAction.CALIBRATION_DONE, STMAction.POSITION_DONE);
+        };
+    }
+
+    @Override
+    public void initializeChannels(Thing thing, ThingBuilder thingBuilder, Consumer<Thing> updateThing) {
+        ConfigMode mode = getConfigMode(thing);
+        if (mode == null) {
+            return;
+        }
+
+        Channel channel1, channel2;
+        switch (mode) {
+            case LEGACY:
+                channel1 = thing.getChannel(CHANNEL_DIMMER);
+                channel2 = thing.getChannel(CHANNEL_STATEMACHINESTATE);
+                if (channel1 != null && channel2 != null) {
+                    thingBuilder.withoutChannel(channel1.getUID());
+                    thingBuilder.withoutChannel(channel2.getUID());
+                }
+                updateThing.accept(thingBuilder.build());
+                break;
+            case ROLLERSHUTTER:
+                channel1 = thing.getChannel(CHANNEL_DIMMER);
+                if (channel1 != null) {
+                    thingBuilder.withoutChannel(channel1.getUID());
+                }
+                updateThing.accept(thingBuilder.build());
+                break;
+            case BLINDS:
+                // All channels are used in blinds mode
+                break;
+        }
     }
 }
