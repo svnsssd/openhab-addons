@@ -13,7 +13,6 @@
 package org.openhab.binding.enocean.internal.eep;
 
 import java.util.Set;
-import java.util.function.Consumer;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -21,7 +20,6 @@ import org.openhab.binding.enocean.internal.statemachine.STMAction;
 import org.openhab.binding.enocean.internal.statemachine.STMState;
 import org.openhab.binding.enocean.internal.statemachine.STMTransitionConfiguration;
 import org.openhab.core.thing.Thing;
-import org.openhab.core.thing.binding.builder.ThingBuilder;
 
 /**
  * Interface for EEPs that require a state machine for operation.
@@ -61,12 +59,10 @@ public interface STMCapable {
     Set<STMAction> getRequiredCallbackActions(Thing thing);
 
     /**
-     * Initializes channels based on the device configuration.
-     * This may remove channels that are not needed for the current mode.
+     * Gets the channel IDs that should be removed based on the device configuration.
      *
      * @param thing the Thing to read configuration from
-     * @param thingBuilder the builder to modify channels
-     * @param updateThing consumer to apply the modified Thing
+     * @return set of channel IDs to remove (empty if none should be removed)
      */
-    void initializeChannels(Thing thing, ThingBuilder thingBuilder, Consumer<Thing> updateThing);
+    Set<String> getChannelsToRemove(Thing thing);
 }

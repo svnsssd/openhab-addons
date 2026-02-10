@@ -41,6 +41,7 @@ import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
 import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.binding.builder.ThingBuilder;
 import org.openhab.core.thing.link.ItemChannelLinkRegistry;
 import org.openhab.core.thing.type.ChannelTypeUID;
 import org.openhab.core.types.Command;
@@ -173,7 +174,19 @@ public class EnOceanBaseActuatorHandler extends EnOceanBaseSensorHandler {
                         restoreStateMachineState();
                     }
                 }
-                stmEEP.initializeChannels(thing, editThing(), this::updateThing);
+
+                // Remove channels based on configuration mode
+                Set<String> channelsToRemove = stmEEP.getChannelsToRemove(thing);
+                if (!channelsToRemove.isEmpty()) {
+                    ThingBuilder thingBuilder = editThing();
+                    for (String channelId : channelsToRemove) {
+                        Channel channel = thing.getChannel(channelId);
+                        if (channel != null) {
+                            thingBuilder.withoutChannel(channel.getUID());
+                        }
+                    }
+                    updateThing(thingBuilder.build());
+                }
                 logger.debug("STM initialized via STMCapable interface");
             }
 

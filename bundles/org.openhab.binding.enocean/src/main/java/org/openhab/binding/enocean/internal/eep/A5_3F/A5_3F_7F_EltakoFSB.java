@@ -15,7 +15,6 @@ package org.openhab.binding.enocean.internal.eep.A5_3F;
 import static org.openhab.binding.enocean.internal.EnOceanBindingConstants.*;
 
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -38,7 +37,6 @@ import org.openhab.core.library.types.UpDownType;
 import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
-import org.openhab.core.thing.binding.builder.ThingBuilder;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.openhab.core.types.UnDefType;
@@ -433,33 +431,16 @@ public class A5_3F_7F_EltakoFSB extends _4BSMessage implements STMCapable {
     }
 
     @Override
-    public void initializeChannels(Thing thing, ThingBuilder thingBuilder, Consumer<Thing> updateThing) {
+    public Set<String> getChannelsToRemove(Thing thing) {
         ConfigMode mode = getConfigMode(thing);
         if (mode == null) {
-            return;
+            return Set.of();
         }
 
-        Channel channel1, channel2;
-        switch (mode) {
-            case LEGACY:
-                channel1 = thing.getChannel(CHANNEL_DIMMER);
-                channel2 = thing.getChannel(CHANNEL_STATEMACHINESTATE);
-                if (channel1 != null && channel2 != null) {
-                    thingBuilder.withoutChannel(channel1.getUID());
-                    thingBuilder.withoutChannel(channel2.getUID());
-                }
-                updateThing.accept(thingBuilder.build());
-                break;
-            case ROLLERSHUTTER:
-                channel1 = thing.getChannel(CHANNEL_DIMMER);
-                if (channel1 != null) {
-                    thingBuilder.withoutChannel(channel1.getUID());
-                }
-                updateThing.accept(thingBuilder.build());
-                break;
-            case BLINDS:
-                // All channels are used in blinds mode
-                break;
-        }
+        return switch (mode) {
+            case LEGACY -> Set.of(CHANNEL_DIMMER, CHANNEL_STATEMACHINESTATE);
+            case ROLLERSHUTTER -> Set.of(CHANNEL_DIMMER);
+            case BLINDS -> Set.of();
+        };
     }
 }

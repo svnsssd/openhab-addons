@@ -30,7 +30,7 @@ public class EnOceanChannelRollershutterConfig {
      * Operating mode for FSB14 actuators.
      */
     public enum ConfigMode {
-        LEGACY(""),
+        LEGACY("legacy"),
         ROLLERSHUTTER("rollershutter"),
         BLINDS("blinds");
 
@@ -45,12 +45,12 @@ public class EnOceanChannelRollershutterConfig {
         }
 
         public static ConfigMode getConfigMode(@Nullable String value) {
-            if (value == null) {
+            if (value == null || value.isEmpty()) {
                 return ConfigMode.LEGACY;
             }
 
             for (ConfigMode t : ConfigMode.values()) {
-                if (t.value.equals(value)) {
+                if (t.value.equalsIgnoreCase(value)) {
                     return t;
                 }
             }
