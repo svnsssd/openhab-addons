@@ -172,6 +172,13 @@ public class EnOceanBaseActuatorHandler extends EnOceanBaseSensorHandler {
         // Check if a full sender address is provided
         String senderAddressHex = getConfiguration().senderAddress;
         if (senderAddressHex != null && !senderAddressHex.isEmpty()) {
+            // Validate that RS485 mode is enabled when using direct sender address
+            if (!bridgeHandler.isRS485Enabled()) {
+                configurationErrorDescription = "Sender address can only be used when RS485 mode is enabled on the bridge. "
+                        + "Either enable RS485 mode or use senderIdOffset instead.";
+                return false;
+            }
+
             try {
                 this.senderId = HexUtils.hexToBytes(senderAddressHex);
                 if (this.senderId.length != 4) {
