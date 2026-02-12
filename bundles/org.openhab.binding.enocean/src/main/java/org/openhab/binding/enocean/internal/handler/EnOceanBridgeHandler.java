@@ -82,7 +82,7 @@ public class EnOceanBridgeHandler extends ConfigStatusBridgeHandler implements T
     private @Nullable ScheduledFuture<?> connectorTask; // is used for reconnection if something goes wrong
 
     private byte[] baseId = new byte[0];
-    private Thing[] sendingThings = new Thing[256];
+    private Thing[] sendingThings = new Thing[128];
 
     private SerialPortManager serialPortManager;
 
@@ -341,10 +341,6 @@ public class EnOceanBridgeHandler extends ConfigStatusBridgeHandler implements T
         return smackClients.contains(sender.getConfiguration().as(EnOceanBaseConfig.class).enoceanId);
     }
 
-    public boolean isRS485Enabled() {
-        return getConfigAs(EnOceanBridgeConfig.class).rs485;
-    }
-
     public @Nullable Integer getNextSenderId(Thing sender) {
         return getNextSenderId(sender.getConfiguration().as(EnOceanBaseConfig.class).enoceanId);
     }
@@ -360,8 +356,7 @@ public class EnOceanBridgeHandler extends ConfigStatusBridgeHandler implements T
             return senderId;
         }
 
-        int senderIdLimit = config.rs485 ? sendingThings.length : 128;
-        for (int i = 1; i < senderIdLimit; i++) {
+        for (int i = 1; i < sendingThings.length; i++) {
             if (sendingThings[i] == null || sendingThings[i].getConfiguration().as(EnOceanBaseConfig.class).enoceanId
                     .equalsIgnoreCase(enoceanId)) {
                 return i;

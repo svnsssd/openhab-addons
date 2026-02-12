@@ -71,17 +71,16 @@ public class EnOceanBaseActuatorHandler extends EnOceanBaseSensorHandler {
     /**
      *
      * @param senderIdOffset to be validated
-     * @return true if senderIdOffset is between ]0;128[ (or ]0;256[ for RS485) and is not used yet
+     * @return true if senderIdOffset is between ]0;128[ and is not used yet
      */
     private boolean validateSenderIdOffset(@Nullable Integer senderIdOffset) {
         if (senderIdOffset == null) {
             return true;
         }
 
-        EnOceanBridgeHandler bridgeHandler = getBridgeHandler();
-        if (bridgeHandler != null) {
-            int maxSenderIdOffset = bridgeHandler.isRS485Enabled() ? 256 : 128;
-            if (senderIdOffset > 0 && senderIdOffset < maxSenderIdOffset) {
+        if (senderIdOffset > 0 && senderIdOffset < 128) {
+            EnOceanBridgeHandler bridgeHandler = getBridgeHandler();
+            if (bridgeHandler != null) {
                 return !bridgeHandler.existsSender(senderIdOffset, this.thing);
             }
         }
