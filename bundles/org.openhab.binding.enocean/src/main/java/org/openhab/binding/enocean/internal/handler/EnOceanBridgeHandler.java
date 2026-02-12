@@ -360,8 +360,8 @@ public class EnOceanBridgeHandler extends ConfigStatusBridgeHandler implements T
             return senderId;
         }
 
-        int maxSenderId = config.rs485 ? sendingThings.length : 128;
-        for (int i = 1; i < maxSenderId; i++) {
+        int senderIdLimit = config.rs485 ? sendingThings.length : 128;
+        for (int i = 1; i < senderIdLimit; i++) {
             if (sendingThings[i] == null || sendingThings[i].getConfiguration().as(EnOceanBaseConfig.class).enoceanId
                     .equalsIgnoreCase(enoceanId)) {
                 return i;
