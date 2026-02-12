@@ -175,14 +175,15 @@ public class EnOceanBaseActuatorHandler extends EnOceanBaseSensorHandler {
             try {
                 this.senderId = HexUtils.hexToBytes(senderAddressHex);
                 if (this.senderId.length != 4) {
-                    configurationErrorDescription = "Sender address must be 8 hex digits (4 bytes), e.g., FF00AA01";
+                    configurationErrorDescription = "Sender address must be exactly 8 hex characters (4 bytes), e.g., FF00AA01 or 00112233";
                     return false;
                 }
                 this.updateProperty(PROPERTY_SENDINGENOCEAN_ID, HexUtils.bytesToHex(this.senderId));
                 // No need to register with bridge when using full address
                 return true;
             } catch (IllegalArgumentException e) {
-                configurationErrorDescription = "Invalid sender address format. Use 8 hex digits, e.g., FF00AA01";
+                configurationErrorDescription = "Invalid sender address format: " + e.getMessage()
+                        + ". Expected 8 hex characters (0-9, A-F), e.g., FF00AA01";
                 return false;
             }
         }
