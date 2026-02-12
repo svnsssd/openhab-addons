@@ -169,6 +169,24 @@ public class EnOceanBaseActuatorHandler extends EnOceanBaseSensorHandler {
             return false;
         }
 
+        // Check if a full sender address is provided
+        String senderAddressHex = getConfiguration().senderAddress;
+        if (senderAddressHex != null && !senderAddressHex.isEmpty()) {
+            try {
+                this.senderId = HexUtils.hexToBytes(senderAddressHex);
+                if (this.senderId.length != 4) {
+                    configurationErrorDescription = "Sender address must be 8 hex digits (4 bytes), e.g., FF00AA01";
+                    return false;
+                }
+                this.updateProperty(PROPERTY_SENDINGENOCEAN_ID, HexUtils.bytesToHex(this.senderId));
+                // No need to register with bridge when using full address
+                return true;
+            } catch (IllegalArgumentException e) {
+                configurationErrorDescription = "Invalid sender address format. Use 8 hex digits, e.g., FF00AA01";
+                return false;
+            }
+        }
+
         // Generic things are treated as actuator things, however to support also generic sensors one can omit
         // senderIdOffset
         // TODO: seperate generic actuators from generic sensors?
