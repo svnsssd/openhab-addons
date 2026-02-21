@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="dahuadoor"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<bridge-type id="bridge">
+		<label>Dahua VTO Bridge</label>
+		<description>Bridge for Dahua VTO door station devices</description>
+
+		<config-description>
+			<parameter name="hostname" type="text" required="true">
+				<context>network-address</context>
+				<label>Hostname</label>
+				<description>Hostname or IP address of the Dahua device</description>
+			</parameter>
+			<parameter name="username" type="text" required="true">
+				<context>username</context>
+				<label>Username</label>
+				<description>Username to access the device</description>
+			</parameter>
+			<parameter name="password" type="text" required="true">
+				<context>password</context>
+				<label>Password</label>
+				<description>Password to access the device</description>
+			</parameter>
+			<parameter name="snapshotpath" type="text" required="true">
+				<label>Snapshot Path</label>
+				<description>Filesystem path where snapshots will be saved</description>
+			</parameter>
+		</config-description>
+	</bridge-type>
+
+</thing:thing-descriptions>

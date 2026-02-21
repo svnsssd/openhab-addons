@@ -43,12 +43,12 @@ public class DahuaDoorHttpQueries {
 
     private final Logger logger = LoggerFactory.getLogger(DahuaDoorHttpQueries.class);
 
-    private @Nullable DahuaDoorConfiguration config;
+    private @Nullable DahuaBridgeConfiguration config;
     private @Nullable HttpClient httpClient;
     private @Nullable DigestAuthentication digestAuth;
     private @Nullable URI authUri;
 
-    public DahuaDoorHttpQueries(@Nullable HttpClient httpClient, @Nullable DahuaDoorConfiguration config) {
+    public DahuaDoorHttpQueries(@Nullable HttpClient httpClient, @Nullable DahuaBridgeConfiguration config) {
         this.config = config;
         this.httpClient = httpClient;
 
@@ -66,7 +66,7 @@ public class DahuaDoorHttpQueries {
     }
 
     public byte @Nullable [] requestImage() {
-        final @Nullable DahuaDoorConfiguration localConfig = config;
+        final @Nullable DahuaBridgeConfiguration localConfig = config;
         if (localConfig == null) {
             logger.warn("Configuration not initialized");
             return null;
@@ -103,7 +103,7 @@ public class DahuaDoorHttpQueries {
     }
 
     public void openDoor(int doorNo) {
-        final @Nullable DahuaDoorConfiguration localConfig = config;
+        final @Nullable DahuaBridgeConfiguration localConfig = config;
 
         if (localConfig == null) {
             logger.warn("Configuration not initialized");
@@ -142,7 +142,7 @@ public class DahuaDoorHttpQueries {
         }
     }
 
-    private OpenDoorHttpResponse sendOpenDoorRequest(DahuaDoorConfiguration localConfig, String path,
+    private OpenDoorHttpResponse sendOpenDoorRequest(DahuaBridgeConfiguration localConfig, String path,
             @Nullable String authorizationHeader) throws Exception {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(localConfig.hostname, 80), REQUEST_TIMEOUT_SECONDS * 1000);
@@ -195,7 +195,7 @@ public class DahuaDoorHttpQueries {
     }
 
     private @Nullable String createDigestAuthorizationHeaderForOpenDoor(String challenge,
-            DahuaDoorConfiguration localConfig, String path) throws Exception {
+            DahuaBridgeConfiguration localConfig, String path) throws Exception {
         if (!challenge.toLowerCase().startsWith("digest")) {
             return null;
         }
@@ -247,7 +247,7 @@ public class DahuaDoorHttpQueries {
         return auth.toString();
     }
 
-    private SnapshotHttpResponse sendSnapshotRequest(DahuaDoorConfiguration localConfig,
+    private SnapshotHttpResponse sendSnapshotRequest(DahuaBridgeConfiguration localConfig,
             @Nullable String authorizationHeader) throws Exception {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(localConfig.hostname, 80), REQUEST_TIMEOUT_SECONDS * 1000);
@@ -392,7 +392,7 @@ public class DahuaDoorHttpQueries {
         return new SnapshotHttpResponse(statusCode, headers, body);
     }
 
-    private @Nullable String createDigestAuthorizationHeader(String challenge, DahuaDoorConfiguration localConfig)
+    private @Nullable String createDigestAuthorizationHeader(String challenge, DahuaBridgeConfiguration localConfig)
             throws Exception {
         if (!challenge.toLowerCase().startsWith("digest")) {
             return null;

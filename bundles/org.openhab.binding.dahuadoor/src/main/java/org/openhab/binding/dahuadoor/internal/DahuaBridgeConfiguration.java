@@ -15,14 +15,19 @@ package org.openhab.binding.dahuadoor.internal;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 
 /**
- * The {@link DahuaDoorConfiguration} class contains fields mapping thing configuration parameters.
- * Currently, all configuration is done on the bridge level (hostname, username, password, snapshotpath).
- * This class is reserved for future thing-specific configuration parameters.
+ * The {@link DahuaBridge Configuration} class contains fields mapping bridge configuration parameters.
  *
  * @author Sven Schad - Initial contribution
  */
 @NonNullByDefault
-public class DahuaDoorConfiguration {
-    // Currently no thing-specific configuration parameters.
-    // Connection and snapshot path are configured on the bridge.
+public class DahuaBridgeConfiguration {
+
+    /**
+     * Configuration parameters for the Dahua bridge, containing connection information
+     * and snapshot path shared by all child devices.
+     */
+    public String hostname = "";
+    public String username = "";
+    public String password = "";
+    public String snapshotpath = "";
 }

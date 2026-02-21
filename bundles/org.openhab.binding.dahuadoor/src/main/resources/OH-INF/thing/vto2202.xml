@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="dahuadoor"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+	xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+	<thing-type id="vto2202">
+		<supported-bridge-type-refs>
+			<bridge-type-ref id="bridge"/>
+		</supported-bridge-type-refs>
+
+		<label>Dahua VTO2202 Door Station</label>
+		<description>Dahua VTO2202F door station with single doorbell button</description>
+
+		<channels>
+			<channel id="bell-button" typeId="bell-button"/>
+			<channel id="door-image" typeId="door-image"/>
+			<channel id="open-door-1" typeId="open-door"/>
+			<channel id="open-door-2" typeId="open-door"/>
+		</channels>
+	</thing-type>
+
+	<!-- Channel Type Definitions -->
+	<channel-type id="bell-button">
+		<kind>trigger</kind>
+		<label>Door Button Trigger</label>
+		<description>Triggered when doorbell button is pressed</description>
+		<event>
+			<options>
+				<option value="PRESSED">Pressed</option>
+			</options>
+		</event>
+	</channel-type>
+
+	<channel-type id="door-image">
+		<item-type>Image</item-type>
+		<label>Door Image</label>
+		<description>Camera snapshot taken when doorbell is pressed</description>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="open-door">
+		<item-type>Switch</item-type>
+		<label>Open Door</label>
+		<description>Command to open door relay</description>
+	</channel-type>
+
+</thing:thing-descriptions>

@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 /**
@@ -134,14 +135,16 @@ public class DahuaEventClient implements Runnable {
                 ArrayList<String> data;
                 try {
                     data = receive();
-                    if (data != null) {
-                        for (String packet : data) {
-                            JsonObject jsonPacket = gson.fromJson(packet, JsonObject.class);
-                            if (jsonPacket != null) {
-                                if (jsonPacket.has("result")) {
-                                    logger.trace("keepAlive back");
-                                    keepAliveReceived = true;
-                                } else if ("client.notifyEventStream".equals(jsonPacket.get("method").getAsString())) {
+                    for (String packet : data) {
+                        JsonObject jsonPacket = gson.fromJson(packet, JsonObject.class);
+                        if (jsonPacket != null) {
+                            if (jsonPacket.has("result")) {
+                                logger.trace("keepAlive back");
+                                keepAliveReceived = true;
+                            } else {
+                                JsonElement methodElement = jsonPacket.get("method");
+                                if (methodElement != null
+                                        && "client.notifyEventStream".equals(methodElement.getAsString())) {
                                     eventListener.eventHandler(jsonPacket);
                                 }
                             }
@@ -160,11 +163,9 @@ public class DahuaEventClient implements Runnable {
     }
 
     public void send(String packet) throws IOException {
-        if (packet == null) {
-            packet = "";
-        }
+        String sendPacket = (packet != null) ? packet : "";
 
-        byte[] payloadBytes = packet.getBytes(StandardCharsets.UTF_8);
+        byte[] payloadBytes = sendPacket.getBytes(StandardCharsets.UTF_8);
         ByteBuffer buffer = ByteBuffer.allocate(32 + payloadBytes.length);
         buffer.order(ByteOrder.BIG_ENDIAN);
         buffer.putInt(0x20000000);
@@ -308,6 +309,7 @@ public class DahuaEventClient implements Runnable {
                 logger.trace("global.login [random]");
                 return false;
             }
+            @SuppressWarnings("unchecked")
             Map<String, Object> jsonData = new Gson().fromJson(data.get(0), Map.class);
             if (jsonData == null || !jsonData.containsKey("session") || !jsonData.containsKey("params")) {
                 logger.trace("Invalid JSON response from login");
@@ -320,6 +322,7 @@ public class DahuaEventClient implements Runnable {
                 logger.trace("Invalid session type in response");
                 return false;
             }
+            @SuppressWarnings("unchecked")
             Map<String, Object> params = (Map<String, Object>) jsonData.get("params");
             if (params == null) {
                 logger.trace("Missing params in response");
@@ -345,15 +348,17 @@ public class DahuaEventClient implements Runnable {
 
             send(new Gson().toJson(queryArgs));
             data = receive();
-            if (data == null) {
+            if (data.isEmpty()) {
                 return false;
             }
-            jsonData = new Gson().fromJson(data.get(0), Map.class);
-            if (jsonData != null) {
-                if (Boolean.TRUE.equals(jsonData.get("result"))) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> jsonDataLogin = new Gson().fromJson(data.get(0), Map.class);
+            if (jsonDataLogin != null) {
+                if (Boolean.TRUE.equals(jsonDataLogin.get("result"))) {
                     logger.trace("Login success");
-                    Object paramsObj = jsonData.get("params");
+                    Object paramsObj = jsonDataLogin.get("params");
                     if (paramsObj instanceof Map) {
+                        @SuppressWarnings("unchecked")
                         Map<String, Object> paramsMap = (Map<String, Object>) paramsObj;
                         Object intervalObj = paramsMap.get("keepAliveInterval");
                         if (intervalObj instanceof Number) {
@@ -362,14 +367,14 @@ public class DahuaEventClient implements Runnable {
                     }
                     return true;
                 }
-                Object errorObj = jsonData.get("error");
+                Object errorObj = jsonDataLogin.get("error");
                 if (errorObj instanceof Map) {
                     Map<?, ?> errorMap = (Map<?, ?>) errorObj;
                     Object code = errorMap.get("code");
                     Object message = errorMap.get("message");
                     logger.trace("Login failed: {} {}", code, message);
                 } else {
-                    logger.trace("Login failed: {}", jsonData);
+                    logger.trace("Login failed: {}", jsonDataLogin);
                 }
             } else {
                 logger.trace("Login failed: empty or invalid JSON response");
@@ -393,10 +398,12 @@ public class DahuaEventClient implements Runnable {
                 }
             }
             error = true;
+            Socket currentSocket = null;
             try {
 
-                sock = new Socket(host, 5000);
-                sock.setSoTimeout(5000); // Set timeout to 5 seconds
+                currentSocket = new Socket(host, 5000);
+                currentSocket.setSoTimeout(5000); // Set timeout to 5 seconds
+                sock = currentSocket;
                 error = false;
 
                 if (!login()) {
@@ -405,13 +412,7 @@ public class DahuaEventClient implements Runnable {
                         errorInformer.accept("can't login, check host setting and credentials");
                         execThread = false;
                     }
-                    try {
-                        if (sock != null) {
-                            sock.close();
-                        }
-                    } catch (IOException e) {
-                        logger.trace("Error closing socket after login failure", e);
-                    }
+                    closeSocketSafely(currentSocket);
                     continue;
                 }
 
@@ -424,39 +425,39 @@ public class DahuaEventClient implements Runnable {
 
                 send(new Gson().toJson(queryArgs));
                 ArrayList<String> data = receive();
-                if (data.isEmpty() || !gson.fromJson(data.get(0), JsonObject.class).has("result")) {
+                JsonObject result = data.isEmpty() ? null : gson.fromJson(data.get(0), JsonObject.class);
+                if (result == null || !result.has("result")) {
                     logger.trace("Failure eventManager.attach");
-                    try {
-                        if (sock != null) {
-                            sock.close();
-                        }
-                    } catch (IOException e) {
-                        logger.trace("Error closing socket after attach failure", e);
-                    }
+                    closeSocketSafely(currentSocket);
                     continue;
-                } else {
-                    for (String packet : data) {
-                        JsonObject jsonPacket = gson.fromJson(packet, JsonObject.class);
-                        if (jsonPacket != null && jsonPacket.has("method")) {
-                            String method = jsonPacket.get("method").getAsString();
-                            if ("client.notifyEventStream".equals(method)) {
-                                eventListener.eventHandler(jsonPacket);
-                            }
+                }
+
+                for (String packet : data) {
+                    JsonObject jsonPacket = gson.fromJson(packet, JsonObject.class);
+                    if (jsonPacket != null && jsonPacket.has("method")) {
+                        String method = jsonPacket.get("method").getAsString();
+                        if ("client.notifyEventStream".equals(method)) {
+                            eventListener.eventHandler(jsonPacket);
                         }
                     }
                 }
+
                 keepAlive(this.keepAliveInterval);
                 logger.trace("Failure no keep alive received");
             } catch (Exception e) {
                 logger.trace("Socket open failed: {}", e.getMessage());
             }
         }
-        try {
-            if (sock != null) {
-                sock.close();
+        closeSocketSafely(sock);
+    }
+
+    private void closeSocketSafely(@Nullable Socket socket) {
+        if (socket != null) {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                logger.trace("Error while closing socket", e);
             }
-        } catch (Exception e) {
-            logger.trace("Error while closing socket", e);
         }
     }
 }
