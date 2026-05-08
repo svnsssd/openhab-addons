@@ -18,13 +18,9 @@
 				<label>Door Button 2 Trigger</label>
 				<description>Trigger channel for button 2</description>
 			</channel>
-			<channel id="door-image-1" typeId="door-image">
-				<label>Door Image 1</label>
-				<description>Image of door when button 1 is pressed</description>
-			</channel>
-			<channel id="door-image-2" typeId="door-image">
-				<label>Door Image 2</label>
-				<description>Image of door when button 2 is pressed</description>
+			<channel id="door-image" typeId="door-image">
+				<label>Door Image</label>
+				<description>Image of door when a button is pressed</description>
 			</channel>
 			<channel id="open-door-1" typeId="open-door">
 				<label>Open Door 1</label>
@@ -39,7 +35,7 @@
 			<channel id="sip-call-state" typeId="sip-call-state"/>
 		</channels>
 		<properties>
-			<property name="thingTypeVersion">2</property>
+			<property name="thingTypeVersion">3</property>
 		</properties>
 		<representation-property>macAddress</representation-property>
 

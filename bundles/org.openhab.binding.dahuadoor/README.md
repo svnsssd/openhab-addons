@@ -81,8 +81,7 @@ keytool -importcert -alias dahua-door -file ca.crt \
 | -------------- | ------- | ---------- | ---------------------------------------------------------------------------------- |
 | bell-button-1  | Trigger | Read       | Triggers when button 1 is pressed (event: PRESSED)                                 |
 | bell-button-2  | Trigger | Read       | Triggers when button 2 is pressed (event: PRESSED)                                 |
-| door-image-1   | Image   | Read       | Camera snapshot when button 1 is pressed                                           |
-| door-image-2   | Image   | Read       | Camera snapshot when button 2 is pressed                                           |
+| door-image     | Image   | Read       | Camera snapshot when either button is pressed                                      |
 | open-door-1    | Switch  | Write      | Command to open door relay 1                                                       |
 | open-door-2    | Switch  | Write      | Command to open door relay 2                                                       |
 | webrtc-url     | String  | Read       | Proxy path for browser SDP offer/answer exchange via openHAB                       |
@@ -150,8 +149,7 @@ Thing dahuadoor:vto3211:entrance "Entrance Station" @ "Entrance" [
 ```java
 Switch OpenApartment1 "Open Apartment 1" <door> { channel="dahuadoor:vto3211:entrance:open-door-1" }
 Switch OpenApartment2 "Open Apartment 2" <door> { channel="dahuadoor:vto3211:entrance:open-door-2" }
-Image Apartment1Image "Apartment 1 Camera" <camera> { channel="dahuadoor:vto3211:entrance:door-image-1" }
-Image Apartment2Image "Apartment 2 Camera" <camera> { channel="dahuadoor:vto3211:entrance:door-image-2" }
+Image EntranceImage "Entrance Camera" <camera> { channel="dahuadoor:vto3211:entrance:door-image" }
 ```
 
 #### Rule Configuration
@@ -165,7 +163,7 @@ when
 then
   sendBroadcastNotification("Visitor at Apartment 1", "door", 
     "entrance", "Entrance", "door-notifications", null, 
-    "item:Apartment1Image", 
+    "item:EntranceImage", 
     "Open Door=command:OpenApartment1:ON", null)
 end
 
@@ -175,7 +173,7 @@ when
 then
   sendBroadcastNotification("Visitor at Apartment 2", "door", 
     "entrance", "Entrance", "door-notifications", null, 
-    "item:Apartment2Image", 
+    "item:EntranceImage", 
     "Open Door=command:OpenApartment2:ON", null)
 end
 ```

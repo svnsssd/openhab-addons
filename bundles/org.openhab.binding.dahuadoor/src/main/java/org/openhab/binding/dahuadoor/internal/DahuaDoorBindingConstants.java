@@ -35,8 +35,6 @@ public class DahuaDoorBindingConstants {
     public static final String CHANNEL_BELL_BUTTON_1 = "bell-button-1";
     public static final String CHANNEL_BELL_BUTTON_2 = "bell-button-2";
     public static final String CHANNEL_DOOR_IMAGE = "door-image";
-    public static final String CHANNEL_DOOR_IMAGE_1 = "door-image-1";
-    public static final String CHANNEL_DOOR_IMAGE_2 = "door-image-2";
     public static final String CHANNEL_OPEN_DOOR_1 = "open-door-1";
     public static final String CHANNEL_OPEN_DOOR_2 = "open-door-2";
     public static final String CHANNEL_WEBRTC_URL = "webrtc-url";

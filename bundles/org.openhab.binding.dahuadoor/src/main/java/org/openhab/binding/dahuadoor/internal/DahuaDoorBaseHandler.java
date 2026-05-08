@@ -21,6 +21,7 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -175,6 +176,8 @@ public abstract class DahuaDoorBaseHandler extends BaseThingHandler implements D
         if ((localConfig.enableWebRTC || localConfig.enableSip) && !validateBackchannelPorts(localConfig)) {
             return;
         }
+
+        restoreLatestSnapshot(localConfig);
 
         client = new DahuaEventClient(localConfig.hostname, localConfig.username, localConfig.password,
                 localConfig.useHttps, this, this::errorInformer);
@@ -370,6 +373,39 @@ public abstract class DahuaDoorBaseHandler extends BaseThingHandler implements D
         } catch (IOException e) {
             logger.warn("Could not write latest snapshot to '{}', check permissions and path", latestSnapshotFilename,
                     e);
+        }
+    }
+
+    private void restoreLatestSnapshot(DahuaDoorConfiguration localConfig) {
+        if (localConfig.snapshotPath.isBlank()) {
+            return;
+        }
+
+        File latestSnapshot = new File(localConfig.snapshotPath, "Doorbell.jpg");
+        if (!latestSnapshot.isFile()) {
+            logger.debug("No latest snapshot found at '{}'", latestSnapshot.getAbsolutePath());
+            return;
+        }
+
+        byte[] buffer;
+        try {
+            buffer = Files.readAllBytes(latestSnapshot.toPath());
+        } catch (IOException e) {
+            logger.warn("Could not read latest snapshot from '{}'", latestSnapshot.getAbsolutePath(), e);
+            return;
+        }
+
+        if (buffer.length == 0) {
+            logger.debug("Latest snapshot file '{}' is empty", latestSnapshot.getAbsolutePath());
+            return;
+        }
+
+        RawType image = new RawType(buffer, "image/jpeg");
+        Channel channel = getThing().getChannel(CHANNEL_DOOR_IMAGE);
+        if (channel != null) {
+            updateState(CHANNEL_DOOR_IMAGE, image);
+        } else {
+            logger.debug("No image channels available to restore snapshot for {}", getThing().getUID());
         }
     }
 

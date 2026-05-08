@@ -55,18 +55,8 @@ public class DahuaVto3211Handler extends DahuaDoorBaseHandler {
     protected void onButtonPressed(int lockNumber) {
         logger.debug("Button {} pressed on VTO3211", lockNumber);
 
-        // Determine channel IDs based on lock number
-        String bellButtonChannelId;
-        String doorImageChannelId;
-
-        if (lockNumber == 2) {
-            bellButtonChannelId = DahuaDoorBindingConstants.CHANNEL_BELL_BUTTON_2;
-            doorImageChannelId = DahuaDoorBindingConstants.CHANNEL_DOOR_IMAGE_2;
-        } else {
-            // Default to button 1 for lockNumber 1 or any other value
-            bellButtonChannelId = DahuaDoorBindingConstants.CHANNEL_BELL_BUTTON_1;
-            doorImageChannelId = DahuaDoorBindingConstants.CHANNEL_DOOR_IMAGE_1;
-        }
+        String bellButtonChannelId = lockNumber == 2 ? DahuaDoorBindingConstants.CHANNEL_BELL_BUTTON_2
+                : DahuaDoorBindingConstants.CHANNEL_BELL_BUTTON_1;
 
         // Trigger bell button channel
         Channel bellChannel = this.getThing().getChannel(bellButtonChannelId);
@@ -83,13 +73,11 @@ public class DahuaVto3211Handler extends DahuaDoorBaseHandler {
             return;
         }
 
-        final String doorImageChannelIdFinal = doorImageChannelId;
         scheduler.submit(() -> {
             byte[] buffer = localClient.requestImage();
             if (buffer != null && buffer.length > 0) {
-                // Update image channel for the specific button
                 RawType image = new RawType(buffer, "image/jpeg");
-                updateState(doorImageChannelIdFinal, image);
+                updateState(DahuaDoorBindingConstants.CHANNEL_DOOR_IMAGE, image);
 
                 // Save snapshot image
                 saveSnapshot(buffer);
