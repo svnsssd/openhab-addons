@@ -269,6 +269,7 @@ Note that you need to run openHAB behind an HTTPS reverse proxy; otherwise brows
 When `enableWebRTC=true` and `enableSip=true` with at least one `sipExtension`, the binding adjusts the VTO audio
 setting to G.711A / 8 kHz after each successful SIP registration. The device resets this on reboot, so the binding
 applies it again.
+In this mode the WebRTC video comes from the RTSP stream and the door audio from the SIP call, so the door audio is only available after the call has been answered.
 WebRTC starts when the thing initializes and keeps its ports in use while the thing is online.
 
 ### Tool installation

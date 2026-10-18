@@ -19,6 +19,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.util.Arrays;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -32,6 +33,12 @@ import org.slf4j.LoggerFactory;
  * go2rtc currently uses ffmpeg to transcode browser backchannel audio to RTP PCM/16 kHz on a local
  * loopback port. This relay forwards those RTP packets to the negotiated SIP target, preferring
  * PCM/16000 passthrough and falling back to G.711 PCMA/PCMU transcoding when needed.
+ * </p>
+ *
+ * <p>
+ * In the opposite direction the relay receives the door audio the VTO sends to the advertised SIP audio port
+ * and forwards the raw PCM/16000 payload to a local UDP port read by a go2rtc ffmpeg source. While no call audio
+ * arrives, silence is sent so that the ffmpeg source keeps its output stream alive.
  * </p>
  *
  * @author Sven Schad - Initial contribution
@@ -51,6 +58,11 @@ public class SipBackchannelRtpRelay {
     private static final String CODEC_PCMU = "PCMU";
     private static final int PCM_CLOCK_RATE = 16000;
     private static final int G711_CLOCK_RATE = 8000;
+    /** 20 ms of PCM/16000 mono (16 bit). */
+    private static final int SILENCE_FRAME_BYTES = 640;
+    private static final long SILENCE_FRAME_MILLIS = 20;
+    /** The VTO delivers RTP in bursts with gaps of ~100 ms, so silence must not fill gaps during a call. */
+    private static final long SILENCE_AFTER_MILLIS = 500;
     private static final int ULAW_CLIP = 32635;
     private static final int[] SEGMENT_ENDS = { 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF };
 
@@ -73,6 +85,7 @@ public class SipBackchannelRtpRelay {
     private final String label;
     private final int listenPort;
     private final int sourcePort;
+    private final int ingestPort;
     private final Object lifecycleLock = new Object();
 
     private volatile @Nullable RelayTarget relayTarget;
@@ -80,6 +93,8 @@ public class SipBackchannelRtpRelay {
     private @Nullable DatagramSocket receiveSocket;
     private @Nullable DatagramSocket sendSocket;
     private @Nullable Thread workerThread;
+    private @Nullable DatagramSocket ingestSocket;
+    private @Nullable Thread ingestThread;
     private volatile int resolvedSourcePort;
 
     private volatile boolean running;
@@ -90,11 +105,21 @@ public class SipBackchannelRtpRelay {
     private volatile long lastIncomingPacketAtMillis;
     private volatile long targetSetAtMillis;
     private volatile long lastNoInputWarningAtMillis;
+    private volatile long ingestedPackets;
+    private volatile long droppedIngestPackets;
 
     public SipBackchannelRtpRelay(String label, int listenPort, int sourcePort) {
+        this(label, listenPort, sourcePort, 0);
+    }
+
+    /**
+     * @param ingestPort local UDP port the door audio is forwarded to, {@code 0} disables the ingress path
+     */
+    public SipBackchannelRtpRelay(String label, int listenPort, int sourcePort, int ingestPort) {
         this.label = label;
         this.listenPort = listenPort;
         this.sourcePort = sourcePort;
+        this.ingestPort = ingestPort;
         this.resolvedSourcePort = sourcePort;
     }
 
@@ -126,6 +151,8 @@ public class SipBackchannelRtpRelay {
             forwardedPackets = 0;
             droppedNoTargetPackets = 0;
             droppedInvalidPackets = 0;
+            ingestedPackets = 0;
+            droppedIngestPackets = 0;
             lastIncomingPacketAtMillis = System.currentTimeMillis();
             targetSetAtMillis = 0;
             lastNoInputWarningAtMillis = 0;
@@ -137,6 +164,14 @@ public class SipBackchannelRtpRelay {
             worker.start();
             workerThread = worker;
 
+            if (ingestPort > 0) {
+                ingestSocket = new DatagramSocket();
+                Thread ingest = new Thread(this::runIngestLoop, "dahua-sip-audio-ingest-" + ingestPort);
+                ingest.setDaemon(true);
+                ingest.start();
+                ingestThread = ingest;
+            }
+
             LOGGER.info("SIP backchannel RTP relay '{}' started on 127.0.0.1:{} with source port {}", label, listenPort,
                     resolvedSourcePort);
         }
@@ -144,8 +179,10 @@ public class SipBackchannelRtpRelay {
 
     public void stop() {
         Thread localWorker;
+        Thread localIngestThread;
         DatagramSocket localReceiveSocket;
         DatagramSocket localSendSocket;
+        DatagramSocket localIngestSocket;
 
         synchronized (lifecycleLock) {
             if (!running) {
@@ -164,6 +201,12 @@ public class SipBackchannelRtpRelay {
 
             localSendSocket = sendSocket;
             sendSocket = null;
+
+            localIngestThread = ingestThread;
+            ingestThread = null;
+
+            localIngestSocket = ingestSocket;
+            ingestSocket = null;
         }
 
         if (localReceiveSocket != null) {
@@ -171,6 +214,9 @@ public class SipBackchannelRtpRelay {
         }
         if (localSendSocket != null) {
             localSendSocket.close();
+        }
+        if (localIngestSocket != null) {
+            localIngestSocket.close();
         }
         if (localWorker != null) {
             localWorker.interrupt();
@@ -180,11 +226,19 @@ public class SipBackchannelRtpRelay {
                 Thread.currentThread().interrupt();
             }
         }
+        if (localIngestThread != null) {
+            localIngestThread.interrupt();
+            try {
+                localIngestThread.join(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
 
         LOGGER.info(
-                "SIP backchannel RTP relay '{}' stopped (listenPort={}, sourcePort={}, received={}, forwarded={}, droppedNoTarget={}, droppedInvalid={})",
+                "SIP backchannel RTP relay '{}' stopped (listenPort={}, sourcePort={}, received={}, forwarded={}, droppedNoTarget={}, droppedInvalid={}, ingested={}, droppedIngest={})",
                 label, listenPort, getSourcePort(), receivedPackets, forwardedPackets, droppedNoTargetPackets,
-                droppedInvalidPackets);
+                droppedInvalidPackets, ingestedPackets, droppedIngestPackets);
     }
 
     public void setTarget(@Nullable SipAudioOffer offer, String reason) {
@@ -299,6 +353,91 @@ public class SipBackchannelRtpRelay {
                         target.remotePort, e.getMessage());
             }
         }
+    }
+
+    private void runIngestLoop() {
+        byte[] buffer = new byte[MAX_PACKET_SIZE];
+        byte[] silence = new byte[SILENCE_FRAME_BYTES];
+        long lastAudioAtMillis = 0;
+        long nextSilenceAtMillis = System.currentTimeMillis() + SILENCE_FRAME_MILLIS;
+
+        while (running) {
+            DatagramSocket localSendSocket = sendSocket;
+            DatagramSocket localIngestSocket = ingestSocket;
+            if (localSendSocket == null || localIngestSocket == null) {
+                return;
+            }
+
+            try {
+                int waitMillis = (int) Math.max(1, nextSilenceAtMillis - System.currentTimeMillis());
+                localSendSocket.setSoTimeout(waitMillis);
+                DatagramPacket incoming = new DatagramPacket(buffer, buffer.length);
+                localSendSocket.receive(incoming);
+
+                long now = System.currentTimeMillis();
+                nextSilenceAtMillis = now + SILENCE_AFTER_MILLIS;
+
+                RelayTarget target = relayTarget;
+                byte[] payload = target != null && CODEC_PCM.equals(target.codecName)
+                        && target.clockRate == PCM_CLOCK_RATE ? extractIngestPayload(incoming) : null;
+                if (payload == null) {
+                    droppedIngestPackets++;
+                    if (droppedIngestPackets == 1 || droppedIngestPackets % 100 == 0) {
+                        LOGGER.debug(
+                                "SIP audio ingest '{}' dropped RTP packet from {} (count={}, length={}, target={})",
+                                label, incoming.getSocketAddress(), droppedIngestPackets, incoming.getLength(),
+                                target == null ? "none" : target.codecName + "/" + target.clockRate);
+                    }
+                    continue;
+                }
+
+                localIngestSocket.send(
+                        new DatagramPacket(payload, payload.length, InetAddress.getLoopbackAddress(), ingestPort));
+                lastAudioAtMillis = now;
+                ingestedPackets++;
+                if (ingestedPackets == 1 || ingestedPackets % 500 == 0) {
+                    LOGGER.debug("SIP audio ingest '{}' forwarded door audio (count={}, bytes={}, ingestPort={})",
+                            label, ingestedPackets, payload.length, ingestPort);
+                }
+            } catch (SocketTimeoutException e) {
+                long now = System.currentTimeMillis();
+                if (now - lastAudioAtMillis >= SILENCE_AFTER_MILLIS) {
+                    try {
+                        localIngestSocket.send(new DatagramPacket(silence, silence.length,
+                                InetAddress.getLoopbackAddress(), ingestPort));
+                    } catch (IOException ex) {
+                        if (running) {
+                            LOGGER.trace("SIP audio ingest '{}' silence send failed: {}", label, ex.getMessage());
+                        }
+                    }
+                    nextSilenceAtMillis += SILENCE_FRAME_MILLIS;
+                    if (nextSilenceAtMillis < now) {
+                        nextSilenceAtMillis = now + SILENCE_FRAME_MILLIS;
+                    }
+                } else {
+                    nextSilenceAtMillis = lastAudioAtMillis + SILENCE_AFTER_MILLIS;
+                }
+            } catch (IOException e) {
+                if (running) {
+                    LOGGER.debug("SIP audio ingest '{}' failed: {}", label, e.getMessage());
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns the raw payload of an RTP packet, or {@code null} if the packet is not a valid RTP v2 packet with
+     * a non-empty 16 bit sample payload.
+     */
+    static byte @Nullable [] extractIngestPayload(DatagramPacket incoming) {
+        int length = incoming.getLength();
+        byte[] packet = new byte[length];
+        System.arraycopy(incoming.getData(), incoming.getOffset(), packet, 0, length);
+        int payloadOffset = getRtpPayloadOffset(packet, length);
+        if (payloadOffset < 0 || payloadOffset >= length || ((length - payloadOffset) % 2) != 0) {
+            return null;
+        }
+        return Arrays.copyOfRange(packet, payloadOffset, length);
     }
 
     static byte @Nullable [] buildForwardPacket(DatagramPacket incoming, RelayTarget target) {

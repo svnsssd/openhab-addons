@@ -139,4 +139,35 @@ class SipBackchannelRtpRelayTest {
         assertEquals(0xFF, forwarded[12] & 0xFF);
         assertEquals(0xFF, forwarded[13] & 0xFF);
     }
+
+    @Test
+    void extractIngestPayloadStripsRtpHeader() {
+        byte[] packet = new byte[16];
+        packet[0] = (byte) 0x80;
+        packet[1] = 97;
+        packet[12] = 0x01;
+        packet[13] = 0x02;
+        packet[14] = 0x03;
+        packet[15] = 0x04;
+
+        byte[] payload = SipBackchannelRtpRelay.extractIngestPayload(new DatagramPacket(packet, packet.length));
+        assertNotNull(payload);
+        assertEquals(4, payload.length);
+        assertEquals(0x01, payload[0]);
+        assertEquals(0x04, payload[3]);
+    }
+
+    @Test
+    void extractIngestPayloadRejectsInvalidPackets() {
+        byte[] noRtp = new byte[16];
+        assertNull(SipBackchannelRtpRelay.extractIngestPayload(new DatagramPacket(noRtp, noRtp.length)));
+
+        byte[] headerOnly = new byte[12];
+        headerOnly[0] = (byte) 0x80;
+        assertNull(SipBackchannelRtpRelay.extractIngestPayload(new DatagramPacket(headerOnly, headerOnly.length)));
+
+        byte[] oddPayload = new byte[15];
+        oddPayload[0] = (byte) 0x80;
+        assertNull(SipBackchannelRtpRelay.extractIngestPayload(new DatagramPacket(oddPayload, oddPayload.length)));
+    }
 }
