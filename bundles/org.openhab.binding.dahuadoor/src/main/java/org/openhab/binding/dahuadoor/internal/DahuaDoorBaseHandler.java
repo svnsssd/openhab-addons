@@ -1193,17 +1193,7 @@ public abstract class DahuaDoorBaseHandler extends BaseThingHandler implements D
     protected void handleSIPRegisterResult(JsonObject eventList, JsonObject eventData) {
         if ("Pulse".equals(eventList.get("Action").getAsString())) {
             boolean success = eventData.get("Success").getAsBoolean();
-            DahuaDoorConfiguration localConfig = config;
-            if (success) {
-                logger.debug("Event SIPRegisterResult, Success");
-                DahuaEventClient localClient = client;
-                if (localConfig != null && localConfig.enableWebRTC && localClient != null
-                        && !parseSipExtensions(localConfig.sipExtension).isEmpty()) {
-                    scheduler.submit(localClient::fixAudioCodec);
-                }
-            } else {
-                logger.debug("Event SIPRegisterResult, Failed");
-            }
+            logger.debug("Event SIPRegisterResult, {}", success ? "Success" : "Failed");
         }
     }
 
