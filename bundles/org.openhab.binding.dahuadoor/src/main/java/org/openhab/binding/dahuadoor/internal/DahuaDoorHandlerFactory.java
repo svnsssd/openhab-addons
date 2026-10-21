@@ -44,7 +44,8 @@ import org.osgi.service.http.HttpService;
 @Component(configurationPid = "binding.dahuadoor", service = ThingHandlerFactory.class)
 public class DahuaDoorHandlerFactory extends BaseThingHandlerFactory {
 
-    private static final Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = Set.of(THING_TYPE_VTO2202, THING_TYPE_VTO3211);
+    private static final Set<ThingTypeUID> SUPPORTED_THING_TYPES_UIDS = Set.of(THING_TYPE_VTO2202, THING_TYPE_VTO3211,
+            THING_TYPE_VTO3311);
     private final PlayStreamServlet playStreamServlet;
     private final SipCallControlServlet sipCallControlServlet;
     private final Map<ThingUID, DahuaDoorBaseHandler> handlersByThingUid = new ConcurrentHashMap<>();
@@ -78,6 +79,10 @@ public class DahuaDoorHandlerFactory extends BaseThingHandlerFactory {
             return handler;
         } else if (THING_TYPE_VTO3211.equals(thingTypeUID)) {
             DahuaDoorBaseHandler handler = new DahuaVto3211Handler(thing, playStreamServlet);
+            handlersByThingUid.put(thing.getUID(), handler);
+            return handler;
+        } else if (THING_TYPE_VTO3311.equals(thingTypeUID)) {
+            DahuaDoorBaseHandler handler = new DahuaVto3311Handler(thing, playStreamServlet);
             handlersByThingUid.put(thing.getUID(), handler);
             return handler;
         }

@@ -826,7 +826,7 @@ public abstract class DahuaDoorBaseHandler extends BaseThingHandler implements D
             } else {
                 switch (eventCode) {
                     case CALL_NO_ANSWERED:
-                        handleVTOCall();
+                        handleCallNoAnswered(eventList, eventPayload);
                         break;
                     case IGNORE_INVITE:
                         handleVTHAnswer();
@@ -1267,25 +1267,29 @@ public abstract class DahuaDoorBaseHandler extends BaseThingHandler implements D
         logger.debug("Event Call from VTO");
     }
 
+    protected void handleCallNoAnswered(JsonObject eventList, JsonObject eventData) {
+        handleVTOCall();
+    }
+
     /**
      * Abstract method to handle button press events with lock number identification.
      * Subclasses must implement this to handle single or multi-button devices.
      *
-     * @param lockNumber The lock number from the Invite event (1 or 2)
+     * @param lockNumber the resolved physical button number
      */
     protected abstract void onButtonPressed(int lockNumber);
 
     /**
      * Routes a resolved doorbell event from DHIP to the concrete device handler.
      *
-     * DHIP remains lossless and authoritative for LockNum-based button mapping, so no time-based dedup
+     * DHIP remains lossless and authoritative for device-specific button mapping, so no time-based dedup
      * or SIP gating is applied here.
      *
      * @param source event source label for logging (for example "DHIP")
      * @param lockNumber resolved doorbell/button number
      */
     protected void handleResolvedDoorbellEvent(String source, int lockNumber) {
-        logger.debug("Resolved {} doorbell event for lock {}", source, lockNumber);
+        logger.debug("Resolved {} doorbell event for button {}", source, lockNumber);
         recordLastDoorbellLock(lockNumber);
         lastCallSnapStatus = CALL_SNAP_RING_STATE;
         onButtonPressed(lockNumber);

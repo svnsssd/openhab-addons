@@ -8,6 +8,7 @@ This binding integrates Dahua VTO Villastation door controllers with openHAB, en
 | ---------- | --------- | ------------------------------------------------ |
 | VTO2202    | `vto2202` | Dahua VTO2202 outdoor station with single button |
 | VTO3211    | `vto3211` | Dahua VTO3211 outdoor station with dual buttons  |
+| VTO3311    | `vto3311` | Dahua VTO3311 outdoor station with four buttons  |
 
 **Note:** support of VTO3211 is experimental and has not been tested yet.
 
@@ -22,9 +23,9 @@ Devices in a different subnet or VLAN will not be found automatically and must b
 
 ## Thing Configuration
 
-### VTO2202/VTO3211 Device
+### VTO2202/VTO3211/VTO3311 Device
 
-VTO2202 is a single-button outdoor station; VTO3211 is a dual-button outdoor station.
+VTO2202 is a single-button outdoor station, VTO3211 has two buttons, and VTO3311 has four buttons. For VTO3311, the physical button is resolved by correlating the `CallNoAnswered` and `Invite` events by `CallID` and using the `CallNoAnswered` event's `Index`. If no matching index is available, the Invite is ignored rather than guessing a button from `LockNum`.
 
 | Parameter                    | Type    | Required | Default                                    | Description                                                                                                                                                                                  |
 | ---------------------------- | ------- | -------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -103,6 +104,7 @@ Doorbell_msg_YYYY-MM-DD_HH-mm-ss.<extension>
 The binding stores snapshots in `snapshotPath` and reloads the latest snapshot on startup to restore the `door-image` channels.
 For VTO2202, the latest file is `Doorbell.jpg` and timestamped files are named `Doorbell_YYYY-MM-DD_HH-mm-ss.jpg`.
 For VTO3211, the latest files are `Doorbell-1.jpg` and `Doorbell-2.jpg`, with timestamped files named `Doorbell-1_YYYY-MM-DD_HH-mm-ss.jpg` and `Doorbell-2_YYYY-MM-DD_HH-mm-ss.jpg` (applies to both `snapshotMode=api` and `snapshotMode=dhip`).
+For VTO3311, the four buttons share the `Doorbell.jpg` latest snapshot and `Doorbell_YYYY-MM-DD_HH-mm-ss.jpg` timestamped naming scheme.
 Timestamped files are capped by `maxImages` (0 disables cleanup).
 DHIP downloads in the hangup, unlock, recording, and video message directories are capped by `maxEvents` (0 disables cleanup). Recording cleanup removes matching .dav/.jpg/.idx together. Ring snapshots stored in `snapshotPath` are also counted by `maxImages`.
 
@@ -157,6 +159,21 @@ keytool -importcert -alias dahua-door -file ca.crt \
 | bell-button-2  | Trigger | Read       | Triggers when button 2 is pressed (event: PRESSED)                                 |
 | door-image-1   | Image   | Read       | Camera snapshot when button 1 is pressed                                           |
 | door-image-2   | Image   | Read       | Camera snapshot when button 2 is pressed                                           |
+| open-door-1    | Switch  | Write      | Command to open door relay 1                                                       |
+| open-door-2    | Switch  | Write      | Command to open door relay 2                                                       |
+| webrtc-url     | String  | Read       | Proxy path for browser SDP offer/answer exchange via openHAB                       |
+| sip-registered | Switch  | Read       | `ON` when SIP registration is successful                                           |
+| sip-call-state | String  | Read       | SIP call state (`IDLE`, `RINGING`, `ANSWERING`, `ACTIVE`, `TERMINATING`, `HUNGUP`) |
+
+### VTO3311 Channels (Four Buttons)
+
+| Channel ID     | Type    | Read/Write | Description                                                                        |
+| -------------- | ------- | ---------- | ---------------------------------------------------------------------------------- |
+| bell-button-1  | Trigger | Read       | Triggers when physical button 1 is pressed (event: PRESSED)                       |
+| bell-button-2  | Trigger | Read       | Triggers when physical button 2 is pressed (event: PRESSED)                       |
+| bell-button-3  | Trigger | Read       | Triggers when physical button 3 is pressed (event: PRESSED)                       |
+| bell-button-4  | Trigger | Read       | Triggers when physical button 4 is pressed (event: PRESSED)                       |
+| door-image     | Image   | Read       | Shared camera snapshot channel for all four buttons                               |
 | open-door-1    | Switch  | Write      | Command to open door relay 1                                                       |
 | open-door-2    | Switch  | Write      | Command to open door relay 2                                                       |
 | webrtc-url     | String  | Read       | Proxy path for browser SDP offer/answer exchange via openHAB                       |

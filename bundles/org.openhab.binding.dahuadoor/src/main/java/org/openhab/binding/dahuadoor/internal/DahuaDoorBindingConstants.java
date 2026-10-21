@@ -29,11 +29,14 @@ public class DahuaDoorBindingConstants {
     // List of all Thing Type UIDs
     public static final ThingTypeUID THING_TYPE_VTO2202 = new ThingTypeUID(BINDING_ID, "vto2202");
     public static final ThingTypeUID THING_TYPE_VTO3211 = new ThingTypeUID(BINDING_ID, "vto3211");
+    public static final ThingTypeUID THING_TYPE_VTO3311 = new ThingTypeUID(BINDING_ID, "vto3311");
 
     // List of all Channel ids
     public static final String CHANNEL_BELL_BUTTON = "bell-button";
     public static final String CHANNEL_BELL_BUTTON_1 = "bell-button-1";
     public static final String CHANNEL_BELL_BUTTON_2 = "bell-button-2";
+    public static final String CHANNEL_BELL_BUTTON_3 = "bell-button-3";
+    public static final String CHANNEL_BELL_BUTTON_4 = "bell-button-4";
     public static final String CHANNEL_DOOR_IMAGE = "door-image";
     public static final String CHANNEL_DOOR_IMAGE_1 = "door-image-1";
     public static final String CHANNEL_DOOR_IMAGE_2 = "door-image-2";

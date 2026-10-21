@@ -14,6 +14,7 @@ package org.openhab.binding.dahuadoor.internal.discovery;
 
 import static org.openhab.binding.dahuadoor.internal.DahuaDoorBindingConstants.THING_TYPE_VTO2202;
 import static org.openhab.binding.dahuadoor.internal.DahuaDoorBindingConstants.THING_TYPE_VTO3211;
+import static org.openhab.binding.dahuadoor.internal.DahuaDoorBindingConstants.THING_TYPE_VTO3311;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -73,7 +74,8 @@ public class DahuaDiscoveryService extends AbstractDiscoveryService {
 
     private final Logger logger = LoggerFactory.getLogger(DahuaDiscoveryService.class);
 
-    private static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Set.of(THING_TYPE_VTO2202, THING_TYPE_VTO3211);
+    private static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Set.of(THING_TYPE_VTO2202, THING_TYPE_VTO3211,
+            THING_TYPE_VTO3311);
 
     /** DHIP multicast address used by Dahua devices for device discovery. */
     private static final String DHIP_MULTICAST_ADDRESS = "239.255.255.251";
@@ -348,6 +350,9 @@ public class DahuaDiscoveryService extends AbstractDiscoveryService {
      */
     private @Nullable ThingTypeUID resolveThingType(String deviceType) {
         String upper = deviceType.toUpperCase(Locale.ROOT);
+        if (upper.contains("VTO3311")) {
+            return THING_TYPE_VTO3311;
+        }
         if (upper.contains("VTO3211")) {
             return THING_TYPE_VTO3211;
         }
